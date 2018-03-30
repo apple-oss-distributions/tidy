@@ -2,9 +2,9 @@
 #
 #  CVS Info :
 #
-#     $Author: tduffy $ 
-#     $Date: 2008/01/04 22:49:34 $ 
-#     $Revision: 1.11 $ 
+#     $Author$ 
+#     $Date$ 
+#     $Revision$ 
 #
 #  Copyright (c) 1998-2005 World Wide Web Consortium
 #  (Massachusetts Institute of Technology, European Research 
@@ -91,11 +91,12 @@ DOCDIR = ${TOPDIR}/htmldoc
 # CFLAGS etc..
 # For optimised builds, flags such as "-O2" should be added and -D_DEBUG=1
 # disabled.
-CC= gcc
 ifdef TIDY_APPLE_CHANGES
+CC = $(shell xcrun -find -sdk $(SDKROOT) cc)
 CFLAGS+= -g -Wall -Wno-switch -Wno-parentheses -I $(INCDIR) \
     -fvisibility=hidden -DTIDY_EXPORT='__attribute__((visibility("default")))'
 else
+CC= cc
 CFLAGS= -g -Wall -Wno-switch -Wno-parentheses -I $(INCDIR)
 endif
 # flags only supported with gcc 3.x
@@ -136,7 +137,7 @@ LIBSUFFIX = .a
 OBJSUF = .o
 
 LIBRARY = $(LIBDIR)/$(LIBPREFIX)$(PROJECT)$(LIBSUFFIX)
-AR=ar -r
+AR ?= ar
 
 XSLTPROC = xsltproc
 
@@ -189,7 +190,7 @@ doc:    $(DOCS)
 
 $(LIBRARY): $(OBJFILES)
 	if [ ! -d $(LIBDIR) ]; then mkdir $(LIBDIR); fi
-	$(AR) $@ $(OBJFILES)
+	$(AR) -r $@ $(OBJFILES)
 ifdef RANLIB
 	$(RANLIB) $@
 endif
@@ -200,19 +201,11 @@ $(OBJDIR)/%$(OBJSUF):	$(SRCDIR)/%.c $(HFILES) $(LIBHFILES) Makefile
 
 $(BINDIR)/$(PROJECT):	$(APPDIR)/tidy.c $(HFILES) $(LIBRARY)
 	if [ ! -d $(BINDIR) ]; then mkdir $(BINDIR); fi
-ifdef TIDY_APPLE_CHANGES
-	$(CC) $(CFLAGS) $(OTHERCFLAGS) -mdynamic-no-pic -o $@ $(APPDIR)/tidy.c -I$(INCDIR) -L$(LIBDIR) -l$(PROJECT)
-else
 	$(CC) $(CFLAGS) $(OTHERCFLAGS) -o $@ $(APPDIR)/tidy.c -I$(INCDIR) -L$(LIBDIR) -l$(PROJECT)
-endif
 
 $(BINDIR)/tab2space: $(APPDIR)/tab2space.c
 	if [ ! -d $(BINDIR) ]; then mkdir $(BINDIR); fi
-ifdef TIDY_APPLE_CHANGES
-	$(CC) $(CFLAGS) $(OTHERCFLAGS) -mdynamic-no-pic -o $@ $(APPDIR)/tab2space.c $(LIBS)
-else
 	$(CC) $(CFLAGS) $(OTHERCFLAGS) -o $@ $(APPDIR)/tab2space.c $(LIBS)
-endif
 
 $(HELPXML): $(BINDIR)/$(PROJECT)
 	$(BINDIR)/$(PROJECT) -xml-help > $@

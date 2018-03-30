@@ -8,9 +8,9 @@
 
   CVS Info :
 
-    $Author: iccir $ 
-    $Date: 2007/02/08 05:55:18 $ 
-    $Revision: 1.8 $ 
+    $Author$ 
+    $Date$ 
+    $Revision$ 
 
 */
 
@@ -524,10 +524,18 @@ extern "C" {
 #include <sys/types.h>
 #endif
 #if !defined(HPUX_OS) && !defined(CYGWIN_OS) && !defined(MAC_OS_X) && !defined(BE_OS) && !defined(SOLARIS_OS) && !defined(BSD_BASED_OS) && !defined(OSF_OS) && !defined(IRIX_OS) && !defined(AIX_OS) && !defined(LINUX_OS)
+# undef uint
 typedef unsigned int uint;
 #endif
 #if defined(HPUX_OS) || defined(CYGWIN_OS) || defined(MAC_OS) || defined(BSD_BASED_OS) || defined(_WIN32)
+# undef ulong
 typedef unsigned long ulong;
+#endif
+
+#if defined(__GNUC__)
+#define TIDY_ATTRIBUTE_PRINTF(formatStringArgument, extraArguments) __attribute__((__format__(printf, formatStringArgument, extraArguments)))
+#else
+#define TIDY_ATTRIBUTE_PRINTF(formatStringArgument, extraArguments)
 #endif
 
 /*

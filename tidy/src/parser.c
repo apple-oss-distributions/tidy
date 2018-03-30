@@ -5,9 +5,9 @@
   
   CVS Info :
 
-    $Author: mrowe $ 
-    $Date: 2009/01/29 05:45:41 $ 
-    $Revision: 1.9 $ 
+    $Author$ 
+    $Date$ 
+    $Revision$ 
 
 */
 
@@ -4034,7 +4034,8 @@ static void SanitizeNodesAgainstXSS(TidyDocImpl* doc, Node* node)
                                   TY_(nodeIsEMBED)    (node) ||
                                   TY_(nodeIsSTYLE)    (node) ||
                                   TY_(nodeIsLINK)     (node) ||
-                                  TY_(nodeIsMETA)     (node) ;
+                                  TY_(nodeIsMETA)     (node) ||
+                                  TY_(nodeIsAPPLET)   (node) ;
         }
         else
         {
@@ -4048,7 +4049,8 @@ static void SanitizeNodesAgainstXSS(TidyDocImpl* doc, Node* node)
                                                     !TY_(tmbstrcasecmp)(node->element, "embed")    ||
                                                     !TY_(tmbstrcasecmp)(node->element, "style")    ||
                                                     !TY_(tmbstrcasecmp)(node->element, "link")     ||
-                                                    !TY_(tmbstrcasecmp)(node->element, "meta")     );
+                                                    !TY_(tmbstrcasecmp)(node->element, "meta")     ||
+                                                    !TY_(tmbstrcasecmp)(node->element, "applet")   );
         }
 
         if (shouldRemoveElement)
