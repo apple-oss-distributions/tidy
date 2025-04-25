@@ -46,6 +46,7 @@
 
 */
 
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -716,9 +717,8 @@ static void MergeClasses(TidyDocImpl* doc, Node *node, Node *child)
     {
         if (s2)  /* merge class names from both */
         {
-            uint l1, l2;
-            l1 = TY_(tmbstrlen)(s1);
-            l2 = TY_(tmbstrlen)(s2);
+            size_t l1 = TY_(tmbstrlen)(s1);
+            size_t l2 = TY_(tmbstrlen)(s2);
             names = (tmbstr) MemAlloc(l1 + l2 + 2);
             TY_(tmbstrcpy)(names, s1);
             names[l1] = ' ';
@@ -1769,18 +1769,42 @@ void TY_(NormalizeSpaces)(Lexer *lexer, Node *node)
 
             for (i = node->start; i < node->end; ++i)
             {
+                uint utf8BytesRead = 1, utf8BytesWritten = 0;
+                tmbchar tempbuf[10] = {0};
+                tmbstr result = NULL;
                 c = (byte) lexer->lexbuf[i];
 
                 /* look for UTF-8 multibyte character */
                 if ( c > 0x7F )
-                    i += TY_(GetUTF8)( lexer->lexbuf + i, &c );
+                    utf8BytesRead += TY_(GetUTF8)( lexer->lexbuf + i, &c );
 
                 if ( c == 160 )
                     c = ' ';
 
-                p = TY_(PutUTF8)(p, c);
+                result = TY_(PutUTF8)(&tempbuf[0], c);
+                utf8BytesWritten = (result > &tempbuf[0]) ? (uint)(result - &tempbuf[0]) : 0;
+                if ( utf8BytesWritten == 0 ) {
+                    (lexer->lexbuf + i)[0] = (tmbchar) c;
+                    ++p;
+                }
+                else if ( utf8BytesRead >= utf8BytesWritten ) {
+                    memmove(&(lexer->lexbuf + i)[0], &tempbuf[0], utf8BytesWritten);
+                    i += utf8BytesRead - 1; /* Offset ++i in for loop. */
+                    p += utf8BytesWritten;
+                } else {
+                    /* Error; keep this byte and move to the next. */
+                    if ( c != 0xFFFD && utf8BytesRead != utf8BytesWritten ) {
+#if 1 && defined(_DEBUG)
+                        fprintf(stderr, ">>> utf8BytesRead = %u, utf8BytesWritten = %u\n", utf8BytesRead, utf8BytesWritten);
+                        fprintf(stderr, ">>> i = %d, c = %u\n", i, c);
+#endif
+                        assert( utf8BytesRead == utf8BytesWritten ); /* Can't extend buffer. */
+                    }
+                    ++p;
+                }
             }
-            node->end = p - lexer->lexbuf;
+            intptr_t pos = (p > lexer->lexbuf) ? (p - lexer->lexbuf) : 0;
+            node->end = (pos >= node->start && pos <= node->end) ? (uint)pos : node->end;
         }
 
         node = node->next;
@@ -2158,7 +2182,7 @@ void TY_(VerifyHTTPEquiv)(TidyDocImpl* pDoc, Node *head)
     Node *pNode;
     StyleProp *pFirstProp = NULL, *pLastProp = NULL, *prop = NULL;
     tmbstr s, pszBegin, pszEnd;
-    ctmbstr enc = TY_(GetEncodingNameFromTidyId)(cfg(pDoc, TidyOutCharEncoding));
+    ctmbstr enc = TY_(GetEncodingNameFromTidyId)((uint)cfg(pDoc, TidyOutCharEncoding));
 
     if (!enc)
         return;
@@ -2351,10 +2375,13 @@ void TY_(DowngradeTypography)(TidyDocImpl* doc, Node* node)
 
             for (i = node->start; i < node->end; ++i)
             {
+                uint utf8BytesRead = 1, utf8BytesWritten = 0;
+                tmbchar tempbuf[10] = {0};
+                tmbstr result = NULL;
                 c = (unsigned char) lexer->lexbuf[i];
 
                 if (c > 0x7F)
-                    i += TY_(GetUTF8)(lexer->lexbuf + i, &c);
+                    utf8BytesRead += TY_(GetUTF8)(lexer->lexbuf + i, &c);
 
                 if (c >= 0x2013 && c <= 0x201E)
                 {
@@ -2377,10 +2404,31 @@ void TY_(DowngradeTypography)(TidyDocImpl* doc, Node* node)
                     }
                 }
 
-                p = TY_(PutUTF8)(p, c);
+                result = TY_(PutUTF8)(&tempbuf[0], c);
+                utf8BytesWritten = (result > &tempbuf[0]) ? (uint)(result - &tempbuf[0]) : 0;
+                if ( utf8BytesWritten == 0 ) {
+                    (lexer->lexbuf + i)[0] = (tmbchar) c;
+                    ++p;
+                }
+                else if ( utf8BytesRead >= utf8BytesWritten ) {
+                    memmove(&(lexer->lexbuf + i)[0], &tempbuf[0], utf8BytesWritten);
+                    i += utf8BytesRead - 1; /* Offset ++i in for loop. */
+                    p += utf8BytesWritten;
+                } else {
+                    /* Error; keep this byte and move to the next. */
+                    if ( c != 0xFFFD && utf8BytesRead != utf8BytesWritten ) {
+#if 1 && defined(_DEBUG)
+                        fprintf(stderr, ">>> utf8BytesRead = %u, utf8BytesWritten = %u\n", utf8BytesRead, utf8BytesWritten);
+                        fprintf(stderr, ">>> i = %d, c = %u\n", i, c);
+#endif
+                        assert( utf8BytesRead == utf8BytesWritten ); /* Can't extend buffer. */
+                    }
+                    ++p;
+                }
             }
 
-            node->end = p - lexer->lexbuf;
+            intptr_t pos = (p > lexer->lexbuf) ? (p - lexer->lexbuf) : 0;
+            node->end = (pos >= node->start && pos <= node->end) ? (uint)pos : node->end;
         }
 
         if (node->content)
